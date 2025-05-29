@@ -80,11 +80,24 @@ def save_user():
 
     connection = get_db_connection()
     cursor = connection.cursor()
-    query = """
-    INSERT INTO users (name, phone, date, hour)
-    VALUES (%s, %s, %s, %s)
-    """
+
     try:
+        # verificação de horario exclusivo
+        cursor.execute(
+            "SELECT id FROM users WHERE date = %s AND hour = %s",
+            (date_str, hour_str)
+        )
+        existing = cursor.fetchone()
+        if existing:
+            cursor.close()
+            connection.close()
+            return jsonify({"error": "Já existe um agendamento marcado nesse horario."}), 409
+
+        # Insere novo agendamento
+        query = """
+        INSERT INTO users (name, phone, date, hour)
+        VALUES (%s, %s, %s, %s)
+        """
         cursor.execute(query, (name, phone, date_str, hour_str))
         connection.commit()
         user_id = cursor.lastrowid
@@ -110,6 +123,7 @@ def save_user():
         cursor.close()
         connection.close()
         return jsonify({"error": f"Erro ao salvar o usuário: {e}"}), 500
+
 
 @app.route('/users/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
@@ -140,6 +154,18 @@ def update_user(user_id):
         query_parts.append("hour = %s")
         values.append(hour_str)
 
+    # Verificação de conflito de horário
+    if date_str and hour_str:
+        cursor.execute(
+            "SELECT id FROM users WHERE date = %s AND hour = %s AND id != %s",
+            (date_str, hour_str, user_id)
+        )
+        existing = cursor.fetchone()
+        if existing:
+            cursor.close()
+            connection.close()
+            return jsonify({"error": "Já existe um agendamento para essa data e hora."}), 409
+
     query = f"UPDATE users SET {', '.join(query_parts)} WHERE id = %s"
     values.append(user_id)
 
@@ -169,6 +195,7 @@ def update_user(user_id):
         cursor.close()
         connection.close()
         return jsonify({"error": f"Erro ao atualizar o usuário: {e}"}), 500
+
 
 @app.route('/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):

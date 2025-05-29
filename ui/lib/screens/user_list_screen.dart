@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+// imports de telas
 import 'form_screen.dart';
+import 'description_screen.dart';
+import 'home_screen.dart';
 
 class UserListScreen extends StatefulWidget {
   const UserListScreen({super.key});
@@ -32,7 +35,7 @@ class _UserListScreenState extends State<UserListScreen> {
           _isLoading = false;
         });
       } else {
-        throw Exception('Falha ao carregar usuários');
+        throw Exception('Falha ao carregar a agenda');
       }
     } catch (e) {
       setState(() {
@@ -41,7 +44,8 @@ class _UserListScreenState extends State<UserListScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro ao carregar usuários: $e'),
+          content: Text(
+              'Erro ao carregar os agendamentos, verifique sua conexão: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -61,19 +65,20 @@ class _UserListScreenState extends State<UserListScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Usuário excluído com sucesso!'),
+            content: Text('Horário excluído com sucesso!'),
             backgroundColor: Colors.green,
           ),
         );
       } else {
-        final error = json.decode(response.body)['error'] ?? 'Erro desconhecido';
-        throw Exception('Falha ao excluir usuário: $error');
+        final error =
+            json.decode(response.body)['error'] ?? 'Erro desconhecido';
+        throw Exception('Falha ao excluir horário: $error');
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro ao excluir usuário: $e'),
+          content: Text('Erro ao excluir agendamento: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -85,7 +90,9 @@ class _UserListScreenState extends State<UserListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmar Exclusão'),
-        content: Text('Tem certeza que deseja excluir o usuário $userName?'),
+        content: Text(
+          'Tem certeza que deseja excluir o agendamento do cliente $userName?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -103,11 +110,76 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
+  String _formatTimeDisplay(String time) {
+    if (time.isEmpty) return 'Não disponível';
+    final parts = time.split(':');
+    if (parts.length < 2) return time;
+
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final period = hour < 12 ? 'AM' : 'PM';
+    final displayHour = hour <= 12 ? hour : hour - 12;
+    return '$displayHour:00 $period';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lista de Usuários'),
+        title: const Text(
+          'Lista de Horários Marcados',
+          style: TextStyle(
+            fontFamily: 'Arial',
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: const Color.fromARGB(255, 6, 1, 85),
+      ),
+      // barra inferior com atalhos
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: const Color.fromARGB(255, 6, 1, 85),
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Início',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Agendar Novo Horario',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.info),
+            label: 'Sobre o Projeto',
+          ),
+        ],
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+
+              ///vai para paginainicial
+            );
+          } else if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) =>
+                      const FormScreen()), //vai para pagina de agendamento
+            );
+          } else if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) =>
+                      const DescriptionScreen()), //vai para pagina "sobre nós"
+            );
+          }
+        },
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -116,7 +188,8 @@ class _UserListScreenState extends State<UserListScreen> {
               itemBuilder: (context, index) {
                 final user = _users[index];
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: ExpansionTile(
                     title: Text(
                       user['name'] ?? 'Nome não disponível',
@@ -131,11 +204,13 @@ class _UserListScreenState extends State<UserListScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Telefone: ${user['phone'] ?? 'Não disponível'}'),
+                            Text(
+                                'Telefone: ${user['phone'] ?? 'Não disponível'}'),
                             const SizedBox(height: 8),
                             Text('Data: ${user['date'] ?? 'Não disponível'}'),
                             const SizedBox(height: 8),
-                            Text('Hora: ${_formatTimeDisplay(user['hour'] ?? '')}'),
+                            Text(
+                                'Hora: ${_formatTimeDisplay(user['hour'] ?? '')}'),
                             const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
@@ -145,9 +220,8 @@ class _UserListScreenState extends State<UserListScreen> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => FormScreen(
-                                          userToEdit: user,
-                                        ),
+                                        builder: (context) =>
+                                            FormScreen(userToEdit: user),
                                       ),
                                     ).then((_) => _fetchUsers());
                                   },
@@ -177,16 +251,5 @@ class _UserListScreenState extends State<UserListScreen> {
               },
             ),
     );
-  }
-
-  String _formatTimeDisplay(String time) {
-    if (time.isEmpty) return 'Não disponível';
-    final parts = time.split(':');
-    if (parts.length < 2) return time;
-    
-    final hour = int.tryParse(parts[0]) ?? 0;
-    final period = hour < 12 ? 'AM' : 'PM';
-    final displayHour = hour <= 12 ? hour : hour - 12;
-    return '$displayHour:00 $period';
   }
 }

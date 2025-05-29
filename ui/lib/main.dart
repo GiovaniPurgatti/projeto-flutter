@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       // Título do aplicativo
-      title: 'Form App',
+      title: 'Tech Barber',
       // Configuração do tema com cores e estilo Material 3
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -25,4 +25,4 @@ class MyApp extends StatelessWidget {
       home: const HomeScreen(),
     );
   }
-} 
+}

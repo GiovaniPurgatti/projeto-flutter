@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'home_screen.dart';
+import 'description_screen.dart';
+import 'user_list_screen.dart';
+
 class FormScreen extends StatefulWidget {
   final Map<String, dynamic>? userToEdit;
   const FormScreen({super.key, this.userToEdit});
@@ -25,8 +29,6 @@ class _FormScreenState extends State<FormScreen> {
       _nameController.text = widget.userToEdit!['name'] ?? '';
       _phoneController.text = widget.userToEdit!['phone'] ?? '';
       _dateController.text = widget.userToEdit!['date'] ?? '';
-      
-      // Normaliza o formato da hora
       final hour = widget.userToEdit!['hour'] ?? '';
       if (hour.isNotEmpty) {
         final parts = hour.split(':');
@@ -58,8 +60,9 @@ class _FormScreenState extends State<FormScreen> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    
-    if (_hourController.text.isEmpty || !_getTimeSlots().contains(_hourController.text)) {
+
+    if (_hourController.text.isEmpty ||
+        !_getTimeSlots().contains(_hourController.text)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Por favor, selecione um horário válido'),
@@ -106,26 +109,38 @@ class _FormScreenState extends State<FormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.userToEdit != null
-                ? 'Usuário atualizado com sucesso!'
-                : 'Dados enviados com sucesso!'),
+                ? 'Agendamento Alterado com Sucesso!'
+                : 'Parabéns, Horário Reservado!'),
             backgroundColor: Colors.green,
           ),
         );
         Navigator.pop(context);
-      } else {
-        throw Exception('Falha ao enviar dados');
+      } else if (response.statusCode == 409) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Horário já reservado!'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Erro ao enviar dados. Tente novamente.'),
+          content: Text('Erro ao Agendar, tente novamente.'),
           backgroundColor: Colors.red,
         ),
       );
     }
+  }
+
+  void _clearFields() {
+    _nameController.clear();
+    _dateController.clear();
+    _phoneController.clear();
+    _hourController.clear();
   }
 
   @override
@@ -141,7 +156,19 @@ class _FormScreenState extends State<FormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.userToEdit != null ? 'Editar Usuário' : 'Formulário de Cadastro'),
+        title: Text(
+          widget.userToEdit != null
+              ? 'Editar Agendamento'
+              : 'Cadastre já o seu Horário !',
+          style: const TextStyle(
+            fontFamily: 'Arial',
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: const Color.fromARGB(255, 6, 1, 85),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -155,7 +182,13 @@ class _FormScreenState extends State<FormScreen> {
                   labelText: 'Nome',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) => value?.isEmpty ?? true ? 'Por favor, insira seu nome' : null,
+                validator: (value) => value?.isEmpty ?? true
+                    ? 'Por favor, insira seu nome'
+                    : null,
+                style: const TextStyle(
+                  fontFamily: 'Arial',
+                  color: Color.fromARGB(255, 6, 1, 85),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -165,7 +198,13 @@ class _FormScreenState extends State<FormScreen> {
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.phone,
-                validator: (value) => value?.isEmpty ?? true ? 'Por favor, insira seu telefone' : null,
+                validator: (value) => value?.isEmpty ?? true
+                    ? 'Por favor, insira seu telefone'
+                    : null,
+                style: const TextStyle(
+                  fontFamily: 'Arial',
+                  color: Color.fromARGB(255, 6, 1, 85),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -183,14 +222,22 @@ class _FormScreenState extends State<FormScreen> {
                     lastDate: DateTime(2100),
                   );
                   if (pickedDate != null) {
-                    _dateController.text = pickedDate.toString().substring(0, 10);
+                    _dateController.text =
+                        pickedDate.toString().substring(0, 10);
                   }
                 },
-                validator: (value) => value?.isEmpty ?? true ? 'Por favor, insira uma data' : null,
+                validator: (value) => value?.isEmpty ?? true
+                    ? 'Por favor, insira uma data'
+                    : null,
+                style: const TextStyle(
+                  fontFamily: 'Arial',
+                  color: Color.fromARGB(255, 6, 1, 85),
+                ),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _hourController.text.isNotEmpty && _getTimeSlots().contains(_hourController.text)
+                value: _hourController.text.isNotEmpty &&
+                        _getTimeSlots().contains(_hourController.text)
                     ? _hourController.text
                     : null,
                 decoration: const InputDecoration(
@@ -208,22 +255,87 @@ class _FormScreenState extends State<FormScreen> {
                     _hourController.text = newValue ?? '';
                   });
                 },
-                validator: (value) => value?.isEmpty ?? true ? 'Por favor, selecione um horário' : null,
+                validator: (value) => value?.isEmpty ?? true
+                    ? 'Por favor, selecione um horário'
+                    : null,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               SizedBox(
-                width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submitForm,
                   child: _isLoading
                       ? const CircularProgressIndicator()
-                      : Text(widget.userToEdit != null ? 'Atualizar' : 'Enviar'),
+                      : Text(
+                          widget.userToEdit != null
+                              ? 'Atualizar'
+                              : 'Agendar Horário',
+                          style: const TextStyle(
+                            fontFamily: 'Arial',
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 6, 1, 85),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: _clearFields,
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(
+                      fontFamily: 'Arial',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color.fromARGB(255, 161, 3, 3),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: const Color.fromARGB(255, 6, 1, 85),
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Início',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Agendamentos',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.info),
+            label: 'Sobre o Projeto',
+          ),
+        ],
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          } else if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const UserListScreen()),
+            );
+          } else if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const DescriptionScreen()),
+            );
+          }
+        },
       ),
     );
   }
